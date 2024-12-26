@@ -1,0 +1,245 @@
+1. Setting Up the Backend
+Define Entities
+Bus Entity:
+
+java
+Copy code
+@Entity
+public class Bus {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String name;
+    private String route;
+    private String departureTime;
+    private String arrivalTime;
+    private double price;
+    private int seatsAvailable;
+
+    // Getters and Setters
+}
+User Entity:
+
+java
+Copy code
+@Entity
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String name;
+    private String email;
+    private String password;
+    private String role; // USER or ADMIN
+
+    // Getters and Setters
+}
+Booking Entity:
+
+java
+Copy code
+@Entity
+public class Booking {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    private User user;
+
+    @ManyToOne
+    private Bus bus;
+
+    private String bookingDate;
+    private String passengerDetails; // JSON format
+    private double totalAmount;
+
+    // Getters and Setters
+}
+Implement RESTful APIs
+Bus Controller:
+
+java
+Copy code
+@RestController
+@RequestMapping("/api/buses")
+public class BusController {
+    @Autowired
+    private BusRepository busRepository;
+
+    @GetMapping
+    public List<Bus> getAllBuses() {
+        return busRepository.findAll();
+    }
+
+    @GetMapping("/search")
+    public List<Bus> searchBuses(@RequestParam String from, @RequestParam String to) {
+        return busRepository.findByRouteContaining(from + "-" + to);
+    }
+}
+Booking Controller:
+
+java
+Copy code
+@RestController
+@RequestMapping("/api/bookings")
+public class BookingController {
+    @Autowired
+    private BookingRepository bookingRepository;
+
+    @PostMapping
+    public ResponseEntity<Booking> createBooking(@RequestBody Booking booking) {
+        return ResponseEntity.ok(bookingRepository.save(booking));
+    }
+
+    @GetMapping("/user/{userId}")
+    public List<Booking> getBookingsByUser(@PathVariable Long userId) {
+        return bookingRepository.findByUserId(userId);
+    }
+}
+Authentication Controller:
+
+java
+Copy code
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+    @Autowired
+    private UserService userService;
+
+    @PostMapping("/register")
+    public ResponseEntity<User> register(@RequestBody User user) {
+        return ResponseEntity.ok(userService.registerUser(user));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@RequestBody LoginRequest loginRequest) {
+        return ResponseEntity.ok(userService.authenticateUser(loginRequest));
+    }
+}
+D. Database Configuration
+Add this in application.properties:
+
+properties
+Copy code
+spring.datasource.url=jdbc:mysql://localhost:3306/bus_booking
+spring.datasource.username=root
+spring.datasource.password=your_password
+spring.jpa.hibernate.ddl-auto=update
+2. Setting Up the Frontend
+A. Basic HTML, CSS, and JS Setup
+index.html:
+
+html
+Copy code
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Online Bus Ticket Booking</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Search for Buses</h1>
+    <form id="searchForm">
+        <label>From:</label><input type="text" id="from">
+        <label>To:</label><input type="text" id="to">
+        <button type="submit">Search</button>
+    </form>
+    <div id="results"></div>
+    <script src="script.js"></script>
+</body>
+</html>
+styles.css:
+
+css
+Copy code
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+form {
+    margin-bottom: 20px;
+}
+script.js:
+
+javascript
+Copy code
+document.getElementById("searchForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const from = document.getElementById("from").value;
+    const to = document.getElementById("to").value;
+
+    fetch(`/api/buses/search?from=${from}&to=${to}`)
+        .then(response => response.json())
+        .then(data => {
+            const results = document.getElementById("results");
+            results.innerHTML = data.map(bus => `
+                <div>
+                    <h3>${bus.name}</h3>
+                    <p>${bus.route}</p>
+                    <p>Price: $${bus.price}</p>
+                </div>
+            `).join('');
+        });
+});
+3. User Registration and Authentication
+User Service:
+
+java
+Copy code
+@Service
+public class UserService {
+    @Autowired
+    private UserRepository userRepository;
+
+    public User registerUser(User user) {
+        user.setPassword(new BCryptPasswordEncoder().encode(user.getPassword()));
+        return userRepository.save(user);
+    }
+
+    public String authenticateUser(LoginRequest loginRequest) {
+        // Validate user and generate JWT
+    }
+}
+
+4. Bus Ticket Booking
+Use the above API endpoints (/api/buses, /api/bookings) to handle bookings. Create forms in HTML or React for seat selection and passenger details.
+
+5. User Profile and Booking History
+Create additional endpoints and frontend pages to fetch and update user profiles (/api/users/{id}) and display booking history (/api/bookings/user/{userId}).
+
+6. Testing and Quality Assurance
+Write unit tests for each controller and service using JUnit and Mockito.
+
+Example Test for Bus Controller:
+
+java
+Copy code
+@WebMvcTest(BusController.class)
+public class BusControllerTest {
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private BusRepository busRepository;
+
+    @Test
+    public void testGetAllBuses() throws Exception {
+        mockMvc.perform(get("/api/buses"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+}
+7. Documentation
+Use Swagger for API documentation by adding the springdoc-openapi-ui dependency. Access Swagger UI at http://localhost:8080/swagger-ui.html.
+
+B. API Documentation:
+
+Use Swagger to document API endpoints. Add the springdoc-openapi-ui dependency:
+xml
+Copy code
+<dependency>
+  <groupId>org.springdoc</groupId>
+  <artifactId>springdoc-openapi-ui</artifactId>
+  <version>1.6.0</version>
+</dependency>
